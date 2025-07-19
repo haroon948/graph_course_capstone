@@ -2,15 +2,7 @@
 title: "Contraceptive Choices Across Nigeria: How Education and Wealth Shape Family Planning Decisions"
 author: "HARUNA AREMU"
 date: "2025-07-03"
-output:
-  prettydoc::html_pretty:
-    theme: hpstr
-    toc: true
-    toc_depth: 3
-    number_sections: true
-    df_print: paged
-  editor_options: 
-  chunk_output_type: inline
+theme: morph
 ---
 
 ```{r setup, include=FALSE}
