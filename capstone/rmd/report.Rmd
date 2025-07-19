@@ -1,0 +1,488 @@
+---
+title: "Contraceptive Choices Across Nigeria: How Education and Wealth Shape Family Planning Decisions"
+author: "HARUNA AREMU"
+date: "2025-07-03"
+output:
+  prettydoc::html_pretty:
+    theme: hpstr
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    df_print: paged
+  editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE,
+	fig.align = "center",
+  fig.width = 10,
+  fig.height = 6,
+  dpi = 300
+)
+
+
+```
+
+```{r packages}
+if (!require (pacman)) install.packages("pacman")
+
+pacman::p_load(tidyverse, here, haven, janitor, gt, tidytext)
+```
+
+
+```{r data_import}
+# importing variables of importance to the study and converting them to factors 
+
+# data <- read_dta(here("data/NGIR7BFL.DTA"),
+#                          col_select = c(v312,v313,v364,v361,v362,v106,v107,v133,v155,v190,v191,v013,v025,v024,v130,v218,v501,v701,v705,v502,v503, v323, v323a,v131,v130)) %>% 
+#   haven::as_factor()
+# write_csv(data, here("data/data.csv"))
+
+data <- read_csv(here("data/data.csv"))
+```
+
+
+```{r data-cleaning}
+# Renaming of variables for easy identification and making sure they are all in consistent format with the help  of clean_names()
+data_renamed <- data %>%
+  rename(current_contraceptive_method = v312,
+         Current_use_by_method_type = v313,
+         Pattern_of_use = v361,
+         Intention_to_use = v362,
+         Contraceptive_use_and_intention = v364,
+         Brand_of_pil_used = v323,
+         brand_of_condom_used = v323a,
+         Current_marital_status = v501,
+         C_f_never_in_union = v502,
+         Number_of_unions = v503,
+         Husband_education_level = v701,
+         husband_occupation = v705,
+         Number_of_living_children = v218,
+         Wealth_index_combined = v190,
+         Wealth_index_factor_score_combined = v191,
+         Literacy = v155,
+         Education_in_single_years = v133,
+         Ethnicity = v131,
+         Religion = v130,
+         Highest_educational_level = v106,
+         Highest_year_of_education = v107,
+         Region = v024,
+         Type_of_place_of_residence = v025,
+         Age_in_5_year_groups = v013) %>% 
+  clean_names()
+
+# Changing the data entry to proper case for easy readability
+data_renamed <- data_renamed %>% 
+  mutate(highest_educational_level = str_to_title(highest_educational_level),
+         type_of_place_of_residence = str_to_title(type_of_place_of_residence),
+         wealth_index_combined = str_to_title(wealth_index_combined),
+         current_contraceptive_method = str_to_title(current_contraceptive_method),
+         current_use_by_method_type = str_to_title(current_use_by_method_type),
+         husband_education_level = str_to_title(husband_education_level),
+         highest_educational_level = factor(highest_educational_level,
+                                            levels = c("No Education",
+                                                       "Primary",
+                                                       "Secondary",
+                                                       "Higher")),
+         husband_education_level = factor(husband_education_level,
+                                            levels = c("No Education",
+                                                       "Primary",
+                                                       "Secondary",
+                                                       "Higher")),
+         wealth_index_combined = factor(wealth_index_combined,
+                                        levels = c("Poorest",
+                                                   "Poorer",
+                                                   "Middle",
+                                                   "Richer",
+                                                   "Richest")))
+# Set ggplot2 theme
+theme_set(theme_minimal() + 
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 12, color = "gray50"),
+    axis.title = element_text(size = 11),
+    legend.title = element_text(size = 9),
+    strip.text = element_text(face = "bold")
+  ))
+```
+
+
+# Introduction
+
+Nigeria, as Africa's most populous nation, faces significant challenges in family planning and reproductive health. Understanding the factors that influence contraceptive choices is crucial for developing effective public health policies and interventions. This analysis examines how socioeconomic factors, particularly education and wealth, shape contraceptive decisions among Nigerian women.
+
+This study utilizes data from the 2018 Nigeria Demographic and Health Survey (DHS), specifically the Women's Individual Recode (IR) dataset. The DHS program represents one of the most comprehensive and standardized data collection efforts on population, health, and nutrition in developing countries.
+
+This analyses focuses on the relationships between women's education levels, household wealth indices, partner education, and contraceptive method preferences. 
+
+# Education and Contraceptive Use
+
+## Overall Contraceptive Use by Education Level
+
+Education is often linked to health literacy and autonomy, which can influence reproductive choices. This analysis reveals a strong positive relationship between women's education levels and contraceptive use.
+
+**Findings:**
+
+* Women with higher education had the highest contraceptive use `(25.8%)`.
+
+* Usage was lowest among women with no education `(5.0%)`.
+
+```{r contraceptive-use-by-education}
+plot_data <- data_renamed %>%
+  filter(!is.na(highest_educational_level),
+         !is.na(current_use_by_method_type)) %>%
+  mutate(uses_contraceptive = ifelse(current_use_by_method_type == "No Method", "No", "Yes")) %>%
+  count(highest_educational_level, uses_contraceptive) %>%
+  group_by(highest_educational_level) %>%
+  mutate(percentage = round(((n / sum(n)) * 100), 1)) %>%
+  ungroup()
+
+# Bar chart
+ggplot(
+  plot_data,
+  aes(x = highest_educational_level, y = percentage, fill = uses_contraceptive)
+) +
+  geom_bar(stat = "identity", position = "fill",
+           color = "gray") +
+  labs(
+    title = "Fig 1: Contraceptive Use by Women's Education Level",
+    subtitle = "Percentage distribution of contraceptive use across education levels",
+    x = "Education Level",
+    y = "Percentage (%)",
+    fill = "Uses Contraceptives?"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text.y = element_blank()) +
+  geom_text(
+    aes(label = paste0(percentage, "%")),
+    position = position_fill(vjust = 0.5),
+    size = 4,
+    fontface = "bold",
+    color = "black"
+  ) 
+```
+
+
+## Contraceptive Method Preferences by Education
+
+Different education levels may influence awareness and access to various contraceptive methods. Therefore, this analysis was carried out to identify the single most commonly used method within each education category.
+
+**Findings:**
+
+* Injections were most common `(28.4%)` among women with no or primary education.
+
+* Male condoms were more popular `(27.1%)` among women with secondary or higher education
+
+```{r}
+method_data <- data_renamed %>%
+  filter(!is.na(highest_educational_level), 
+         !is.na(current_contraceptive_method),
+         current_contraceptive_method != "Not Using") %>%
+  count(highest_educational_level, current_contraceptive_method) %>%
+  group_by(highest_educational_level) %>%
+  mutate(percentage = round((n / sum(n)) * 100, 1)) %>% 
+  ungroup()
+
+method_data %>%
+  group_by(highest_educational_level) %>%
+  slice_max(percentage, n = 1) %>%
+  select(highest_educational_level, current_contraceptive_method, percentage) %>%
+  ungroup() %>% 
+   gt() %>%
+  tab_header(
+    title = "Table 1: Most Popular Contraceptive Method by Female Education Level",
+    subtitle = "Top choice for each education category"
+  ) %>%
+  cols_label(
+    highest_educational_level = "Education Level",
+    current_contraceptive_method = "Most Popular Method",
+    percentage = "Percentage (%)"
+  ) %>%
+  fmt_number(
+    columns = percentage,
+    decimals = 1,
+    suffix = "%"
+  )
+```
+
+
+# Partner Education and Contraceptive Decisions
+
+## Partner's Education Impact on Contraceptive Use
+
+Male partners often influence family planning decisions in many Nigerian households.
+
+**Findings:**
+
+* Contraceptive use increased with the partner’s education level.
+
+* Only `4.8%` of women with uneducated partners used contraceptives, compared to `25.9%` with highly educated partners.
+
+```{r}
+data_renamed %>% 
+  filter(!is.na(husband_education_level),
+         !is.na(current_use_by_method_type),
+         husband_education_level != "Don't Know") %>%
+  mutate(use_contraceptive = if_else(current_use_by_method_type == "No Method",
+                                     "No", 
+                                     "Yes")) %>% 
+  count(husband_education_level, use_contraceptive) %>% 
+  group_by(husband_education_level) %>% 
+  mutate(percentage = round((n/sum(n) * 100), 1)) %>% 
+  select(-n) %>% 
+  pivot_wider(names_from = use_contraceptive,
+              values_from = percentage) %>% 
+  ungroup() %>% 
+  gt() %>% 
+  tab_header(title = "Table 2: Contraceptive Use by Partner's Education Level",
+    subtitle = "Impact of male partner's education on contraceptive decisions") %>% 
+  cols_label(husband_education_level = "Partner's Highest Education Level",
+             No = "Does Not Use Contraceptives (%)",
+             Yes = "Uses Contraceptives (%)")
+  
+  
+  
+```
+
+## Partner's Education and Method Choice
+
+Educated partners may support or encourage the use of more modern or effective methods.
+
+**Findings:**
+
+* Injections were preferred when the partner had no or primary education.
+
+* Implants/Norplant were more common with secondary or higher-educated partners.
+
+```{r}
+husband_contraceptive_choice <- data_renamed %>% 
+  filter(complete.cases(husband_education_level,
+                        current_contraceptive_method)) %>% 
+  select(husband_education_level, current_contraceptive_method) %>%
+  filter(!current_contraceptive_method == "Not Using",
+         !husband_education_level == "Don't Know") %>% 
+  group_by(husband_education_level) %>% 
+  count(current_contraceptive_method) %>% 
+  mutate(percentage = round((n/sum(n) * 100), 1)) %>% 
+  select(-n) %>% 
+  ungroup()
+
+
+ggplot(husband_contraceptive_choice,
+       aes(x = reorder_within(current_contraceptive_method, percentage, husband_education_level),
+           y = percentage,
+           fill = current_contraceptive_method)) +
+  geom_bar(stat = "identity",
+           show.legend = F,
+           color = "black",
+           position = "dodge",
+           width = 0.9) +
+  facet_wrap(~husband_education_level, scales = "free_y") +
+  scale_x_reordered() +
+  labs(title = "Figure 2: Contraceptive Method Distribution by Partner's Education",
+    subtitle = "Bar charts showing method preferences for each education level",
+       y = "Percentage",
+       x = "Education Level",
+       fill = "Contraceptive Method") +
+  coord_flip() +
+  geom_text(aes(label = ifelse(percentage > 10, paste0(percentage, "%"), ""),
+                hjust = 1),
+            fontface = "bold")
+```
+
+
+## Combined Education Analysis
+
+This analysis was carried out to analyze the combined effect of  education levels of both partners on the use of contraceptives.
+
+**Findings:**
+
+* Households where both partners have higher education show the highest contraceptive use rates
+
+* Higher education in one partner may partially compensate for lower education in the other
+
+```{r}
+combined_education <- data_renamed %>%
+  filter(complete.cases(husband_education_level,
+                        highest_educational_level,
+                        current_use_by_method_type)) %>%
+  mutate(uses_contraceptive = ifelse(current_use_by_method_type == "No Method", "No", "Yes")) %>%
+  count(highest_educational_level, husband_education_level, uses_contraceptive) %>%
+  group_by(highest_educational_level, husband_education_level) %>%
+  mutate(percentage = round((n / sum(n)) * 100, 1)) %>%
+  filter(uses_contraceptive == "Yes",
+         husband_education_level != "Don't Know") %>%  
+  select(-uses_contraceptive, -n)
+
+ggplot(combined_education, aes(x = husband_education_level, y = highest_educational_level, fill = percentage)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = paste0(percentage, "%")), color = "white", size = 5) +
+  labs(title = "Figure 3: Contraceptive Use: Woman's vs Husband's Education",
+       subtitle = "Percentage using contraceptives by education combinations",
+       x = "Husband's Education Level",
+       y = "Woman's Education Level",
+       fill = "% Using\nContraceptives") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue")
+
+
+```
+
+
+# Wealth and Contraceptive Access
+
+## Wealth Impact on Method Choice
+
+Here, I examined how household wealth affects the types of contraceptives used.
+
+**Findings:**
+
+* Modern contraceptive methods were the most commonly used across all wealth groups.
+
+* Usage of `modern methods` declined with increasing wealth — from `86.2%` among the poorest to `70.9%` among the richest.
+
+* `Traditional method` use increased with wealth — from `8.0%` (poorest) to `27.2%` (richest), suggesting a preference shift among wealthier households.
+
+* `Folkloric methods` were rarely used, accounting for less than `6% `in all wealth groups.
+
+
+
+```{r}
+wealth_by_contraceptive <- data_renamed %>% 
+  filter(complete.cases(wealth_index_combined,
+                        current_use_by_method_type),
+         current_use_by_method_type != "No Method") %>% 
+  count(wealth_index_combined, current_use_by_method_type) %>% 
+  group_by(wealth_index_combined) %>% 
+  mutate(percentage = round((n/sum(n) * 100),1),
+          label = ifelse(percentage >= 8, paste0(percentage, "%"), "")) %>% 
+  ungroup()
+
+ggplot(wealth_by_contraceptive,
+       aes(x = "",
+           y = percentage,
+           fill = current_use_by_method_type)) +
+  geom_bar(stat = "identity",
+           width = 1,
+           color = "black") +
+  coord_polar(theta = "y") +
+  facet_wrap(~wealth_index_combined) +
+  labs(
+    title = "Figure 4: Contraceptive Method Distribution by Wealth Index",
+    subtitle = "Method preferences across wealth quintiles",
+    fill = "Method Type"
+  ) +
+  theme_void() +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 12, color = "gray50"),
+    legend.title = element_text(size = 9),
+    strip.text = element_text(face = "bold")) +
+  geom_text(aes(label = label ),
+                position = position_stack(vjust =0.5),
+                size = 3,
+                color = "black",
+                fontface = "bold")
+```
+
+
+##  Contraceptive Method Preferences by Wealth
+
+* Injections are the most used method among the poorest women `(42.3%)`
+
+* Male condom use increases with wealth, reaching `29.7%` among the richest.
+
+* Traditional methods become more popular with wealth, rising from *8.0%* (poorest) to *27.2%* (richest)
+
+* Folkloric methods remain rare across all wealth levels, never exceeding `6%`.
+
+
+```{r}
+wealth_contraceptive_method <- data_renamed %>% 
+  filter(complete.cases(wealth_index_combined,
+                        current_contraceptive_method),
+         current_contraceptive_method != "Not Using",current_contraceptive_method != "Other Modern Method") %>% 
+  count(wealth_index_combined, current_contraceptive_method) %>% 
+  group_by(wealth_index_combined) %>% 
+  mutate(percentage = round((n/sum(n) * 100),1)) 
+
+ggplot(wealth_contraceptive_method,
+       aes(x = reorder_within(current_contraceptive_method, percentage, wealth_index_combined),
+           y = percentage,
+           fill = current_contraceptive_method)) +
+  geom_col(show.legend = F,
+           color = "black") +
+  facet_wrap(~wealth_index_combined, scales = "free_y", ncol = 2) +
+  coord_flip() +
+  scale_x_reordered() +
+  labs(title = "Figure 5: Contraceptive Method Use by Wealth Group in Nigeria",
+    caption = "Excludes women not using contraception and those using 'Other Modern Methods'",
+    x = "Contraceptive Method",
+    y = "Percentage of Users") +
+  geom_text(aes(label = ifelse(percentage >15, paste0(percentage, "%"), "")),
+            size =3,
+            hjust = 1) +
+theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11, hjust = 0.5),
+    axis.text.y = element_text(size = 10),
+    strip.text = element_text(face = "bold")
+  )
+
+
+
+
+```
+
+# Education and Wealth Interactions
+
+**Key Findings:**
+
+* Contraceptive Use Increases with Both `Education` and `Wealth`
+
+* Women with higher education and greater wealth show the highest contraceptive use rates `(26.6%)` compared to only `3.3%` among poorest women with no education.
+
+
+```{r}
+summary_stats <- data_renamed %>%
+  filter(!is.na(highest_educational_level),
+         !is.na(wealth_index_combined),
+         !is.na(current_use_by_method_type)) %>%
+  mutate(uses_contraceptive = ifelse(current_use_by_method_type == "No Method", "No", "Yes")) %>%
+  group_by(highest_educational_level, wealth_index_combined) %>%
+  summarise(
+    total_women = n(),
+    using_contraceptives = sum(uses_contraceptive == "Yes"),
+    use_rate = round((using_contraceptives / total_women) * 100, 1),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(use_rate))
+
+ggplot(summary_stats, 
+       aes(x = paste(highest_educational_level, wealth_index_combined, sep = " - "), 
+           y = use_rate)) +
+  geom_col(aes(fill = use_rate), show.legend = FALSE,
+           color = "black") +
+  geom_text(aes(label = paste0(use_rate, "%")), 
+            hjust = -0.1, size = 3) +
+  labs(title = "Figure 6: Contraceptive Use Rates by Education-Wealth Combinations",
+       x = "Education - Wealth Combination",
+       y = "Use Rate (%)") +
+  coord_flip() +
+  scale_fill_gradient(low = "lightblue", high = "darkblue")
+```
+
+# Conclusion
+
+This analysis of the 2018 Nigeria DHS data reveals that contraceptive use in Nigeria is shaped not only by a woman’s own education and wealth but also significantly by her partner’s educational background. The findings highlight a complex interplay of socioeconomic factors that influence both the likelihood of contraceptive use and the type of method chosen.
+
+Women with higher education and greater household wealth are significantly more likely to adopt family planning methods, with usage rates rising from just **3.3%** among the poorest, uneducated women to **26.6%** among the wealthiest, most educated. Education empowers women with health knowledge, decision-making autonomy, and increased access to modern reproductive services, while wealth improves affordability and method choice.
+
+Crucially, the partner’s education level also plays a pivotal role. Women with highly educated partners are more than five times as likely to use contraceptives (**25.9%**) compared to those whose partners have no education (**4.8%**). In addition, partner education shapes method preferences—couples where the male partner has secondary or higher education are more inclined toward implants and other long-acting reversible contraceptives, whereas those with less educated partners tend to favor injectables. This underscores the importance of male involvement and support in reproductive health decisions and calls for gender-inclusive family planning education and outreach.
+
+Interestingly, the wealthiest women show a rising preference for traditional methods, with usage increasing from **8.0%** among the poorest to **27.2%** among the richest. This suggests that among wealthier groups, cultural norms, concerns about side effects, or lifestyle preferences may influence choices even when modern methods are accessible.
+
+Ultimately, the data show that education—of both women and their partners—and wealth are interdependent forces. Their combined presence creates an enabling environment for contraceptive uptake, while their absence reinforces reproductive inequality. Bridging this gap will require integrated policy efforts that expand access to quality education for both sexes, actively involve men in family planning conversations, and ensure that all Nigerians, regardless of socioeconomic status, have equitable access to a wide range of safe and acceptable contraceptive options.
+
