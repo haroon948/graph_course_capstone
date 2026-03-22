@@ -69,7 +69,7 @@ data_renamed <- data %>%
 
 # Changing the data entry to proper case for easy readability
 data_renamed <- data_renamed %>% 
-  mutate(highest_educational_level = str_to_title(highest_educational_level),
+  mutate(highest_educational_level = str_trim(str_to_title(highest_educational_level)),
          type_of_place_of_residence = str_to_title(type_of_place_of_residence),
          wealth_index_combined = str_to_title(wealth_index_combined),
          current_contraceptive_method = str_to_title(current_contraceptive_method),
@@ -156,6 +156,17 @@ ggplot(
     fontface = "bold",
     color = "black"
   ) 
+```
+
+
+```{r}
+ggplot(data_renamed,
+       aes(highest_educational_level, number_of_living_children, fill = religion)) +
+  geom_jitter(alpha = 0.5) +
+  geom_violin() +
+  coord_flip() 
+  
+  
 ```
 
 
